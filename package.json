@@ -1,0 +1,9 @@
+{
+  "name": "engineer-quiz-popup-app",
+  "version": "1.0.0",
+  "description": "Netlify Functions สำหรับส่ง push notification รายวัน",
+  "dependencies": {
+    "web-push": "^3.6.7",
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}

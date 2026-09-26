@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Engineer Quiz Popup App</title>
+
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#FF7A1A" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="icon" href="icons/icon-192.png" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ===================== หน้าเลือกสาขา ===================== -->
+  <div class="screen active" id="screen-branch">
+    <div class="app-header" style="margin: -24px -20px 20px -20px; border-radius: 0 0 20px 20px;">
+      <img src="icons/icon-192.png" alt="โลโก้แอป" />
+      <div>
+        <div class="title">Engineer Quiz Popup App</div>
+        <div class="subtitle">เตรียมสอบใบประกอบวิชาชีพ 7 สาขา</div>
+        <div class="credit-line">พัฒนาเพื่อสาธารณประโยชน์โดย ผศ.ดร.ธเนศ วีระศิริ</div>
+      </div>
+    </div>
+
+    <div class="page-title">เลือกสาขาของคุณ</div>
+    <div class="page-subtitle">เลือกสาขาวิศวกรรมควบคุมที่คุณต้องการทบทวน</div>
+
+    <div class="branch-list" id="branch-list">
+      <!-- โหลดจาก Supabase ผ่าน app.js -->
+    </div>
+  </div>
+
+  <!-- ===================== หน้าหลัก ===================== -->
+  <div class="screen" id="screen-home">
+    <div class="app-header" style="margin: -24px -20px 20px -20px; border-radius: 0 0 20px 20px;">
+      <img src="icons/icon-192.png" alt="โลโก้แอป" />
+      <div>
+        <div class="title">Engineer Quiz Popup App</div>
+        <div class="subtitle">เตรียมสอบใบประกอบวิชาชีพ</div>
+      </div>
+    </div>
+
+    <div class="home-hero">
+      <div class="branch-emoji">🛠️</div>
+      <h2 id="home-branch-name">สาขาวิศวกรรมโยธา</h2>
+      <p>เลือกวิธีทบทวนความรู้ที่คุณต้องการด้านล่าง</p>
+    </div>
+
+    <div class="menu-list">
+      <button class="menu-button" id="btn-open-browse">
+        <div class="menu-icon orange">📖</div>
+        <div class="menu-text">
+          <div class="menu-title">ไล่ดูคำถามต่อเนื่อง</div>
+          <div class="menu-desc">เลือกหมวด แล้วทบทวนได้ไม่จำกัดจำนวนข้อ</div>
+        </div>
+      </button>
+
+      <button class="menu-button" id="btn-open-daily">
+        <div class="menu-icon green">🔔</div>
+        <div class="menu-text">
+          <div class="menu-title" id="daily-popup-title">เปิด Popup คำถามรายเช้า</div>
+          <div class="menu-desc" id="daily-popup-desc">รับคำถามสุ่ม 1 ข้อทุกเช้า 7 โมง</div>
+        </div>
+      </button>
+    </div>
+
+    <div class="change-branch-link" id="btn-change-branch">เปลี่ยนสาขา</div>
+  </div>
+
+  <!-- ===================== หน้าเลือกหมวดหมู่ ===================== -->
+  <div class="screen" id="screen-categories">
+    <div class="app-header" style="margin: -24px -20px 20px -20px; border-radius: 0 0 20px 20px;">
+      <button class="back-button" id="back-from-categories">‹ หน้าหลัก</button>
+      <div>
+        <div class="title">เลือกหมวดหมู่</div>
+        <div class="subtitle">เลือกหัวข้อที่ต้องการทบทวน</div>
+      </div>
+    </div>
+
+    <div class="category-list" id="category-list">
+      <div class="loading-spinner"></div>
+    </div>
+  </div>
+
+  <!-- ===================== หน้าคำถาม ===================== -->
+  <div class="screen" id="screen-question">
+    <div class="app-header" style="margin: -24px -20px 0 -20px; border-radius: 0 0 20px 20px;">
+      <button class="back-button" id="back-from-question">‹ หมวดอื่น</button>
+      <div>
+        <div class="title" id="question-category-name">หมวดหมู่</div>
+        <div class="subtitle" id="progress-text">ข้อ 1 / 1</div>
+      </div>
+    </div>
+
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+
+    <div id="question-card-container" style="flex:1; display:flex; flex-direction:column;">
+      <div class="loading-spinner"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+</body>
+</html>
