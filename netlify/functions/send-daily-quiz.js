@@ -75,7 +75,8 @@ exports.handler = async (event) => {
       const randomOffset = Math.floor(Math.random() * count);
       const { data: questionRows } = await supabase
         .from("questions")
-        .select("question, answer")
+        // ดึง id มาด้วย เพื่อแนบไปกับ notification ให้กดแล้วเปิดเฉลยข้อนั้นได้ทันที
+        .select("id, question, answer")
         .eq("is_active", true)
         .in("category_id", categoryIds)
         .range(randomOffset, randomOffset);
@@ -91,18 +92,22 @@ exports.handler = async (event) => {
 
       if (!subscriptions || subscriptions.length === 0) continue;
 
+      // payload เดียวกันทั้งสาขา จึงสร้างครั้งเดียวนอกลูปผู้รับ
+      // แนบทั้ง questionId และ url แบบ deep link (/?q=<id>)
+      // ฝั่ง service worker จะใช้ค่านี้พาผู้ใช้ไปหน้าคำถามข้อนั้นพร้อมเฉลยทันที
+      const payload = JSON.stringify({
+        title: `คำถามประจำวัน — ${branch.name_th}`,
+        body: question.question.slice(0, 120) + (question.question.length > 120 ? "..." : ""),
+        questionId: question.id,
+        url: `/?q=${encodeURIComponent(question.id)}`,
+      });
+
       // 5. ส่ง push ให้ทุกคน
       for (const sub of subscriptions) {
         const pushSubscription = {
           endpoint: sub.endpoint,
           keys: { p256dh: sub.p256dh_key, auth: sub.auth_key },
         };
-
-        const payload = JSON.stringify({
-          title: `คำถามประจำวัน — ${branch.name_th}`,
-          body: question.question.slice(0, 120) + (question.question.length > 120 ? "..." : ""),
-          url: "/",
-        });
 
         try {
           await webpush.sendNotification(pushSubscription, payload);

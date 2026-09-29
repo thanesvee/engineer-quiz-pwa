@@ -336,3 +336,15 @@ h1, h2, h3, .font-display {
   margin: 40px auto;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- แถบหัวเรื่องหน้าคำถามเดี่ยว (เปิดจาก notification) ---------- */
+.single-banner {
+  background: #DCF2DD;
+  color: var(--color-secondary);
+  border: 1px solid #BFE3C2;
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 14px;
+}
