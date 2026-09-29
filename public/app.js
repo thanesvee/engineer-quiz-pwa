@@ -18,6 +18,12 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // เมื่อสาขาใดถูกเปลี่ยนเป็น is_active = true แล้ว จะกลายเป็นสาขาปกติที่ทุกคนเห็นทันที ไม่ต้องแก้โค้ดส่วนนี้อีก
 const previewCode = new URLSearchParams(window.location.search).get("preview");
 
+// ---------- Deep link จาก notification ----------
+// ?q=<question id> = เปิดแอปแล้วกระโดดไปหน้าคำถามข้อนั้นพร้อมเฉลยทันที
+// (ค่า id มาจาก payload ที่ netlify/functions/send-daily-quiz.js แนบมากับ push)
+// ถ้าไม่มีพารามิเตอร์นี้ แอปจะทำงานตามเส้นทางปกติทุกประการ
+const deepLinkQuestionId = new URLSearchParams(window.location.search).get("q");
+
 // ---------- ตัวแปรสถานะแอป (เก็บใน localStorage เพื่อจำการตั้งค่า) ----------
 const STORAGE_KEYS = {
   SELECTED_BRANCH: "eq_selected_branch_code",
@@ -31,6 +37,7 @@ let state = {
   currentCategory: null,
   currentQuestions: [],
   currentIndex: 0,
+  singleView: null, // { question, category, branch } ของหน้าคำถามเดี่ยว
 };
 
 // ============================================================
@@ -318,6 +325,138 @@ function renderCurrentQuestion() {
 }
 
 // ============================================================
+// หน้าคำถามเดี่ยว (เปิดจากการกด notification ผ่าน ?q=<id>)
+// แสดงคำถาม + เฉลย + คำอธิบาย ให้ครบทันที ไม่ต้องเลือกสาขา/หมวดเอง
+// ============================================================
+
+// ล้าง ?q= ออกจาก URL หลังใช้งานแล้ว (คง ?preview= และพารามิเตอร์อื่นไว้)
+// เพื่อให้การกด refresh กลับเข้าแอปตามปกติ ไม่ค้างอยู่ที่คำถามข้อเดิม
+function clearDeepLinkParam() {
+  try {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("q")) return;
+    url.searchParams.delete("q");
+    window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+  } catch (err) {
+    /* เบราว์เซอร์เก่าที่ไม่รองรับ history API — ข้ามไปได้ ไม่กระทบการแสดงผล */
+  }
+}
+
+function renderSingleQuestionError(message) {
+  document.getElementById("single-card-container").innerHTML = `
+    <div class="empty-state">
+      <div class="emoji">📭</div>
+      <div>${message}</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="button-row">
+      <button class="btn btn-primary" id="btn-single-home-fallback">ไปหน้าหลัก</button>
+    </div>
+  `;
+  document
+    .getElementById("btn-single-home-fallback")
+    .addEventListener("click", leaveSingleQuestion);
+}
+
+async function openSingleQuestion(questionId) {
+  showScreen("screen-single");
+  document.getElementById("single-category-name").textContent = "คำถามประจำวัน";
+  document.getElementById("single-branch-name").textContent = "กำลังโหลด...";
+  document.getElementById("single-card-container").innerHTML =
+    '<div class="loading-spinner"></div>';
+
+  clearDeepLinkParam();
+
+  const { data: question, error } = await supabaseClient
+    .from("questions")
+    .select("*")
+    .eq("id", questionId)
+    .maybeSingle();
+
+  if (error || !question) {
+    if (error) console.error(error);
+    document.getElementById("single-branch-name").textContent = "";
+    renderSingleQuestionError("ไม่พบคำถามข้อนี้แล้ว อาจถูกแก้ไขหรือปิดการใช้งานไป");
+    return;
+  }
+
+  // ดึงหมวดหมู่และสาขาแยกเป็นคำสั่งย่อย แทนการ join ซ้อนของ Supabase
+  // เพื่อไม่ต้องพึ่งชื่อ foreign key constraint ในฐานข้อมูล
+  const { data: category } = await supabaseClient
+    .from("categories")
+    .select("*")
+    .eq("id", question.category_id)
+    .maybeSingle();
+
+  let branch = null;
+  if (category) {
+    const { data: branchRow } = await supabaseClient
+      .from("branches")
+      .select("*")
+      .eq("id", category.branch_id)
+      .maybeSingle();
+    branch = branchRow;
+  }
+
+  state.singleView = { question, category, branch };
+
+  // ตั้ง currentBranch ไว้ในหน่วยความจำ เพื่อให้ปุ่ม "ไปหน้าหลัก" ใช้งานต่อได้
+  // แต่ไม่เขียนทับสาขาที่ผู้ใช้เลือกไว้ใน localStorage
+  if (branch) state.currentBranch = branch;
+
+  document.getElementById("single-category-name").textContent =
+    category?.name_th || "คำถามประจำวัน";
+  document.getElementById("single-branch-name").textContent = branch?.name_th || "";
+
+  document.getElementById("single-card-container").innerHTML = `
+    <div class="question-card">
+      <div class="question-label">คำถาม</div>
+      <div class="question-text">${question.question}</div>
+
+      <div class="answer-section visible">
+        <div class="answer-label">เฉลย</div>
+        <div class="answer-text">${question.answer}</div>
+        ${question.explanation ? `
+          <div class="explanation-label">คำอธิบาย</div>
+          <div class="explanation-text">${question.explanation}</div>
+        ` : ""}
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="button-row">
+        <button class="btn btn-secondary" id="btn-single-home">หน้าหลัก</button>
+        <button class="btn btn-primary" id="btn-single-continue">ทบทวนหมวดนี้ต่อ</button>
+      </div>
+    </div>
+  `;
+
+  // นับว่าเคยเห็นข้อนี้แล้ว เพื่อให้โหมดไล่ดูต่อเนื่องไม่หยิบมาซ้ำก่อนข้ออื่น
+  if (category) markSeen(category.id, question.id);
+
+  document.getElementById("btn-single-home").addEventListener("click", leaveSingleQuestion);
+  document.getElementById("btn-single-continue").addEventListener("click", async () => {
+    const { category: cat, branch: br } = state.singleView || {};
+    if (!cat) {
+      showToast("ไม่พบหมวดหมู่ของคำถามข้อนี้");
+      return;
+    }
+    // เข้าหน้าหลักของสาขาก่อน เพื่อโหลดรายการหมวดไว้ให้ปุ่มย้อนกลับใช้งานได้
+    if (br) await enterHome(br);
+    startBrowsing(cat);
+  });
+}
+
+function leaveSingleQuestion() {
+  const branch = state.singleView?.branch;
+  if (branch) {
+    enterHome(branch);
+  } else {
+    tryAutoLogin();
+  }
+}
+
+// ============================================================
 // Push Notification — สมัครรับ Popup คำถามรายเช้า
 // ============================================================
 const PUSH_ENABLED_KEY = "eq_push_enabled";
@@ -406,7 +545,14 @@ async function enableDailyPopup() {
 // ============================================================
 document.addEventListener("DOMContentLoaded", () => {
   loadBranches();
-  tryAutoLogin();
+
+  // มี ?q= มาจาก notification -> ไปหน้าคำถามข้อนั้นเลย
+  // ไม่มี -> เส้นทางเดิมทุกประการ
+  if (deepLinkQuestionId) {
+    openSingleQuestion(deepLinkQuestionId);
+  } else {
+    tryAutoLogin();
+  }
 
   document.getElementById("btn-open-browse").addEventListener("click", openCategoryScreen);
   document.getElementById("btn-open-daily").addEventListener("click", enableDailyPopup);
@@ -419,6 +565,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("back-from-question").addEventListener("click", () => {
     showScreen("screen-categories");
   });
+  document.getElementById("back-from-single").addEventListener("click", leaveSingleQuestion);
 });
 
 // ============================================================
@@ -429,5 +576,13 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("service-worker.js").catch((err) => {
       console.warn("Service worker registration failed:", err);
     });
+  });
+
+  // ทางสำรองของ deep link: ถ้าเบราว์เซอร์ไม่รองรับ WindowClient.navigate
+  // service worker จะส่งข้อความมาบอกให้เปิดหน้าคำถามเอง โดยไม่ต้องรีโหลดหน้า
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data?.type === "OPEN_QUESTION" && event.data.questionId) {
+      openSingleQuestion(event.data.questionId);
+    }
   });
 }

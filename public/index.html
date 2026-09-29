@@ -109,6 +109,24 @@
     </div>
   </div>
 
+  <!-- ============= หน้าคำถามเดี่ยว (เปิดจากการกด notification) ============= -->
+  <!-- แสดงคำถามข้อที่ระบุด้วย ?q=<id> พร้อมเฉลยและคำอธิบายกางออกทันที -->
+  <div class="screen" id="screen-single">
+    <div class="app-header" style="margin: -24px -20px 20px -20px; border-radius: 0 0 20px 20px;">
+      <button class="back-button" id="back-from-single">‹ หน้าหลัก</button>
+      <div>
+        <div class="title" id="single-category-name">คำถามประจำวัน</div>
+        <div class="subtitle" id="single-branch-name"></div>
+      </div>
+    </div>
+
+    <div class="single-banner">🔔 คำถามประจำวันของคุณ — พร้อมเฉลยและคำอธิบาย</div>
+
+    <div id="single-card-container" style="flex:1; display:flex; flex-direction:column;">
+      <div class="loading-spinner"></div>
+    </div>
+  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
